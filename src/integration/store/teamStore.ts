@@ -62,6 +62,27 @@ export const useTeamStore = create<TeamState>()(
     {
       name: 'team-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Migrate legacy IDs so old localStorage entries resolve correctly
+        const legacyMap: Record<string, string> = {
+          'stage-harven': 'growth-market',
+          'single-agent': 'unboring-net',
+        };
+        if (legacyMap[state.selectedAgentSetId]) {
+          state.selectedAgentSetId = legacyMap[state.selectedAgentSetId];
+        }
+        // Remove stale customSystems that shadow built-in teams with incomplete data
+        // (identified by missing leadAgent.subagents or empty subagents array)
+        state.customSystems = state.customSystems.filter((cs) => {
+          const isBuiltIn = ['unboring-net', 'photo-studio', 'music-studio', 'film-studio',
+            'pr-agency', 'startup-advisor', 'finance-analyst', 'growth-market'].includes(cs.id);
+          if (!isBuiltIn) return true; // keep custom-only teams
+          // Drop stale built-in overrides that have no level-2 subagents
+          const hasDeepSubagents = cs.leadAgent?.subagents?.some(s => s.subagents && s.subagents.length > 0);
+          return hasDeepSubagents;
+        });
+      },
     }
   )
 );

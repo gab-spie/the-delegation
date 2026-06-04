@@ -533,9 +533,18 @@ WRITING RULES (humanizer): Strip all AI writing patterns from every output.
   }
 ];
 
+// Legacy ID migrations — keeps old localStorage values working after renames
+const LEGACY_ID_MAP: Record<string, string> = {
+  'stage-harven': 'growth-market',
+  'single-agent': 'unboring-net',
+};
+
 export function getAgentSet(id: string, customSystems: AgenticSystem[] = []): AgenticSystem {
-  const builtIn = AGENTIC_SETS.find((s) => s.id === id);
-  const custom = customSystems.find((s) => s.id === id);
+  // Resolve legacy IDs first
+  const resolvedId = LEGACY_ID_MAP[id] ?? id;
+
+  const builtIn = AGENTIC_SETS.find((s) => s.id === resolvedId);
+  const custom = customSystems.find((s) => s.id === resolvedId);
 
   if (builtIn && custom) {
     // For built-in teams, always use the code-defined agent hierarchy (leadAgent + subagents)
@@ -550,7 +559,8 @@ export function getAgentSet(id: string, customSystems: AgenticSystem[] = []): Ag
     };
   }
 
-  return custom || builtIn || AGENTIC_SETS[0];
+  // If id resolves to nothing (stale/unknown), fallback gracefully to last team
+  return custom || builtIn || AGENTIC_SETS[AGENTIC_SETS.length - 1];
 }
 
 export function getAllAgents(system: AgenticSystem): AgentNode[] {
