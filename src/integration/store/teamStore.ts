@@ -66,7 +66,7 @@ export const useTeamStore = create<TeamState>()(
         if (!state) return;
         // Migrate legacy IDs so old localStorage entries resolve correctly
         const legacyMap: Record<string, string> = {
-          'stage-harven': 'growth-market',
+          'legacy-team-v1': 'growth-market',
           'single-agent': 'unboring-net',
         };
         if (legacyMap[state.selectedAgentSetId]) {

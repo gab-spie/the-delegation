@@ -535,7 +535,7 @@ WRITING RULES (humanizer): Strip all AI writing patterns from every output.
 
 // Legacy ID migrations — keeps old localStorage values working after renames
 const LEGACY_ID_MAP: Record<string, string> = {
-  'stage-harven': 'growth-market',
+  'legacy-team-v1': 'growth-market',
   'single-agent': 'unboring-net',
 };
 
