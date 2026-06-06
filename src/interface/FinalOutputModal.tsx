@@ -22,7 +22,6 @@ export function FinalOutputModal() {
   const scene = useSceneManager()
   const [copied, setCopied] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
-  const [regenCount, setRegenCount] = useState(4)
 
   const handleRegenerate = async (count: number) => {
     if (!finalOutput || isRegenerating) return

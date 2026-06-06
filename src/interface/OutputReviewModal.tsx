@@ -200,7 +200,7 @@ export function OutputReviewModal() {
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center bg-darkDelegation/40 backdrop-blur-md p-4"
-      onClick={handleCancelAndReset}
+      onClick={() => setReviewingOutput(false)}
     >
       <div
         className="bg-white border border-black/10 rounded-[32px] w-180 max-w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden scale-in"

@@ -25,6 +25,7 @@ export interface Task {
   draftOutput?: string,
   reviewComments?: string,
   output?: string,
+  rejectedAt?: number,
   revisions: TaskRevision[]
   createdAt: number
   updatedAt: number
@@ -243,20 +244,9 @@ export const useCoreStore = create<CoreState>()(
       removeTask: (taskId) =>
         set((s) => {
           const newTasks = s.tasks.filter((t) => t.id !== taskId);
-
-          // Logic to check if removing this task finishes the project
-          const hasRemainingTasks = newTasks.some(t => t.status !== 'done');
-          const isWorking = s.phase === 'working';
-
-          let nextPhase = s.phase;
-          if (isWorking && !hasRemainingTasks) {
-            nextPhase = 'done';
-          }
-
-          return {
-            tasks: newTasks,
-            phase: nextPhase,
-          };
+          // FIX #5: Don't auto-transition to done on manual task removal
+          // Let checkProjectCompletion handle it naturally via deliver_project
+          return { tasks: newTasks };
         }),
 
       updateTaskStatus: (taskId, status) =>
@@ -332,8 +322,9 @@ export const useCoreStore = create<CoreState>()(
             tasks: s.tasks.map((t) =>
               t.id === taskId ? { 
                 ...t, 
-                status: 'scheduled', 
+                status: 'scheduled',
                 reviewComments: comments,
+                rejectedAt: Date.now(),
                 revisions: t.draftOutput 
                   ? [...t.revisions, { output: t.draftOutput, feedback: comments, timestamp: Date.now() }] 
                   : t.revisions,

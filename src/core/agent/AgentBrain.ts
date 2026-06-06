@@ -67,8 +67,14 @@ export class AgentBrain {
         this.syncToStore();
       }
 
-      // 2. Prepare context
-      let messages: LLMMessage[] = this.history.slice(-10);
+      // 2. Prepare context — keep first message (brief/context) + last 9 for continuity
+      const MAX_HISTORY = 10;
+      let messages: LLMMessage[];
+      if (this.history.length > MAX_HISTORY) {
+        messages = [this.history[0], ...this.history.slice(-(MAX_HISTORY - 1))];
+      } else {
+        messages = [...this.history];
+      }
 
       // In chat mode, ensure the latest user message also carries images if it's the brief phase
       if (options.isChat && hasVisionSupport && core.referenceImages.length > 0) {

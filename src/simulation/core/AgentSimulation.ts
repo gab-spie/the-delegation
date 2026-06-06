@@ -17,6 +17,9 @@ export class AgentSimulation {
   private unsubs: (() => void)[] = [];
   private heartbeatInterval: any = null;
   private lastSparkTriggerTime: number = 0;
+  private isConcluding: boolean = false;
+  private disposed: boolean = false;
+  private pendingDelays: Set<ReturnType<typeof setTimeout>> = new Set();
 
   constructor(system: AgenticSystem) {
     this.system = system;
@@ -69,20 +72,22 @@ export class AgentSimulation {
     const state = useCoreStore.getState();
     if (state.phase !== 'working') return;
 
-    state.tasks.filter(t => t.status === 'scheduled' || t.status === 'in_progress').forEach(task => {
+    // FIX #16: Only process 'scheduled' tasks — 'in_progress' are already being executed
+    state.tasks.filter(t => t.status === 'scheduled').forEach(task => {
+      // FIX #6: Skip recently rejected tasks — give the agent time to process feedback
+      if (task.rejectedAt && Date.now() - task.rejectedAt < 3000) return;
+
       const agent = this.getAgent(task.assignedAgentId);
-      const uiStatus = useUiStore.getState().agentStatuses[task.assignedAgentId];
-      
-      // Resilience check: only start if agent is truly idle and not currently thinking.
-      // We check both internal state and UI status as safety.
-      if (agent && (agent.state === 'idle' || uiStatus === 'idle') && !agent.isThinking) {
+
+      // FIX #17: Use AND (not OR) and require both idle state + not thinking
+      if (agent && agent.state === 'idle' && !agent.isThinking) {
         this.startTaskExecution(task.assignedAgentId, task.id);
       }
     });
   }
 
   private async triggerAutonomousStrategy() {
-    const lead = this.getAgent(1);
+    const lead = this.getAgent(this.system.leadAgent.index);
     const ui = useUiStore.getState();
     const core = useCoreStore.getState();
 
@@ -100,10 +105,15 @@ export class AgentSimulation {
     const agent = this.getAgent(agentIndex);
     if (!agent) return;
 
-    agent.setTask(taskId); 
+    agent.setTask(taskId);
     useCoreStore.getState().updateTaskStatus(taskId, 'in_progress');
-    
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
+
+    // FIX #33: cancellable delay — if simulation is disposed, skip execution
+    await new Promise<void>(resolve => {
+      const t = setTimeout(() => { this.pendingDelays.delete(t); resolve(); }, Math.random() * 2000 + 1000);
+      this.pendingDelays.add(t);
+    });
+    if (this.disposed) return;
 
     try {
       if (!agent.isThinking) {
@@ -128,13 +138,20 @@ export class AgentSimulation {
   }
 
   private async checkProjectCompletion() {
+    // FIX #44: debounce via isConcluding flag to prevent duplicate deliveries
+    if (this.isConcluding) return;
     const state = useCoreStore.getState();
     const allTasksFinished = state.tasks.length > 0 && state.tasks.every(t => t.status === 'done');
-    
+
     if (state.phase === 'working' && allTasksFinished && !state.isGeneratingAsset) {
       const lead = this.getAgent(this.system.leadAgent.index);
       if (lead && !lead.isThinking) {
-        await lead.concludeProject();
+        this.isConcluding = true;
+        try {
+          await lead.concludeProject();
+        } finally {
+          this.isConcluding = false;
+        }
       }
     }
   }
@@ -164,7 +181,10 @@ export class AgentSimulation {
   }
 
   public dispose() {
+    this.disposed = true;
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.pendingDelays.forEach(t => clearTimeout(t));
+    this.pendingDelays.clear();
     this.unsubs.forEach(unsub => unsub());
     this.unsubs = [];
     this.agents.forEach(a => a.dispose());

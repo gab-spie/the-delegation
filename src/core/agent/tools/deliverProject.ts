@@ -1,13 +1,18 @@
 import { AgentActionContext } from '../ToolRegistry';
 import { useCoreStore } from '../../../integration/store/coreStore';
 import { useTeamStore } from '../../../integration/store/teamStore';
-import { AGENTIC_SETS } from '../../../data/agents';
+import { AGENTIC_SETS, getAgentSet } from '../../../data/agents';
 
 export function deliverProject(agent: AgentActionContext, args: { output: string; imageCount?: number }): boolean {
   const store = useCoreStore.getState();
   const { output, imageCount } = args;
 
-  // VALIDATION: Only Lead Agent (index 1) can deliver (also allowed when 'done' for regeneration)
+  // FIX #15: Only lead agent can deliver — check against actual team lead index
+  const teamId = useTeamStore.getState().selectedAgentSetId;
+  const activeSet = getAgentSet(teamId, useTeamStore.getState().customSystems);
+  if (agent.data.index !== activeSet.leadAgent.index) return false;
+
+  // VALIDATION: Only allowed in working or done (regeneration) phases
   if (store.phase !== 'working' && store.phase !== 'done') return false;
   
   // SAFETY: Prevent project delivery if subagents are still working (skip in 'done' phase — it's a regeneration)
@@ -22,9 +27,7 @@ export function deliverProject(agent: AgentActionContext, args: { output: string
     return false;
   }
 
-  const teamId = useTeamStore.getState().selectedAgentSetId;
-  const activeTeam = useTeamStore.getState().customSystems.find(s => s.id === teamId) 
-    || AGENTIC_SETS.find(s => s.id === teamId);
+  const activeTeam = activeSet;
   const isMultimodal = activeTeam?.outputType && activeTeam.outputType !== 'text';
 
   if (isMultimodal) {
