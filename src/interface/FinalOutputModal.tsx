@@ -240,7 +240,7 @@ export function FinalOutputModal() {
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 border-t border-black/5 flex flex-col gap-6 bg-white">
+        <div className="px-8 py-6 border-t border-black/5 flex flex-col gap-4 bg-white">
           {referenceImages.length > 0 && (
             <div className="space-y-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-300">Visual Inspiration</p>
@@ -250,6 +250,34 @@ export function FinalOutputModal() {
                     <img src={img} alt="Ref" className="w-full h-full object-cover grayscale opacity-50" />
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Satisfaction check */}
+          {!isGeneratingAsset && (
+            <div className="flex items-center gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <span className="text-[11px] font-black text-zinc-500 uppercase tracking-wider shrink-0">Satisfied?</span>
+              <div className="flex gap-2 flex-1">
+                <button
+                  onClick={() => setFinalOutputOpen(false)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                >
+                  ✓ Yes, done
+                </button>
+                <button
+                  onClick={() => {
+                    setFinalOutputOpen(false)
+                    // Signal lead agent that user wants refinement
+                    const brain = scene?.getLeadBrain()
+                    if (brain) {
+                      brain.think('[SYSTEM] The user reviewed the result and wants refinements. Ask them what they would like to change or improve.', { isChat: true })
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                >
+                  ✗ No, refine
+                </button>
               </div>
             </div>
           )}

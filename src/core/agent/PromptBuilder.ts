@@ -55,10 +55,11 @@ export class PromptBuilder {
       ? `\n6. REFERENCE IMAGES: The user has provided ${referenceImages.length} reference image(s). You MUST use these as a visual guide for the project's style, mood, and content. Your team should analyze these to ensure the final ${activeTeam?.outputType} aligns with the inspiration.${modelLimitInfo}`
       : '';
 
-    const outputInstruction = activeTeam?.outputType !== 'text' 
+    const outputInstruction = activeTeam?.outputType !== 'text'
       ? `\n4. TEAM OUTPUT: ${activeTeam?.outputType?.toUpperCase()}. Your 'deliver_project' output MUST be a highly detailed PROMPT for a ${activeTeam?.outputType} generator model (${activeTeam?.outputModel}).
 CRITICAL: You MUST synthesize all subagent findings, research results, and any user feedback into this final prompt. DO NOT just repeat your initial brief.
-The generation model expects a SINGLE prompt to produce a SINGLE ${activeTeam?.outputType}. Be precise.`
+The generation model expects a SINGLE prompt to produce a SINGLE ${activeTeam?.outputType}. Be precise.${activeTeam?.outputType === 'image' ? `
+MULTIPLE IMAGES: If the user wants N separate images/variations, pass imageCount: N in deliver_project (max 8). Your prompt describes ONE image concept — the system generates N independent variations automatically. NEVER ask Gemini for multiple images in the prompt itself.` : ''}`
       : '';
 
     const pendingReviews = tasks.filter(t => t.assignedAgentId === agent.index && t.reviewComments);
