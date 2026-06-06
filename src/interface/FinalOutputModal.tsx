@@ -3,7 +3,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useCoreStore } from '../integration/store/coreStore'
 import { useActiveTeam } from '../integration/store/teamStore'
-import { Loader2, Download, FileText, Table } from 'lucide-react'
+import { useSceneManager } from '../simulation/SceneContext'
+import { Loader2, Download, FileText, Table, RefreshCw, Plus } from 'lucide-react'
 import { TeamOutputBadge } from './components/TeamOutputBadge'
 import { exportToWord, exportToExcel } from '../utils/exportUtils'
 
@@ -18,7 +19,23 @@ export function FinalOutputModal() {
     referenceImages
   } = useCoreStore()
   const activeTeam = useActiveTeam()
+  const scene = useSceneManager()
   const [copied, setCopied] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [regenCount, setRegenCount] = useState(4)
+
+  const handleRegenerate = async (count: number) => {
+    if (!finalOutput || isRegenerating) return
+    setIsRegenerating(true)
+    try {
+      const brain = scene?.getLeadBrain()
+      if (brain) {
+        await brain.processFinalAsset(finalOutput, { imageCount: count })
+      }
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
 
   if (!isFinalOutputOpen) return null
 
@@ -66,25 +83,64 @@ export function FinalOutputModal() {
     }
 
     if (finalAssetType === 'image' && finalAssetContent) {
+      // Support both single image (base64 string) and multiple images (JSON array)
+      let images: string[] = []
+      try {
+        const parsed = JSON.parse(finalAssetContent)
+        if (Array.isArray(parsed)) images = parsed
+        else images = [finalAssetContent]
+      } catch {
+        images = [finalAssetContent]
+      }
+
       return (
         <div className="space-y-4">
-          <div className="relative group">
-            <img
-              src={`data:image/png;base64,${finalAssetContent}`}
-              alt="Final Generated Asset"
-              className="w-full rounded-2xl shadow-xl border border-black/5"
-            />
-            <button
-              onClick={handleDownload}
-              className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-black/5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white text-zinc-600 active:scale-95"
-              title="Download Image"
-            >
-              <Download size={18} />
-            </button>
+          <div className={`grid gap-3 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {images.map((imgData, idx) => (
+              <div key={idx} className="relative group">
+                <img
+                  src={`data:image/png;base64,${imgData}`}
+                  alt={`Generated image ${idx + 1}`}
+                  className="w-full rounded-2xl shadow-xl border border-black/5"
+                />
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a')
+                    link.href = `data:image/png;base64,${imgData}`
+                    link.download = `agentic-image-${Date.now()}-${idx + 1}.png`
+                    link.click()
+                  }}
+                  className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-black/5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white text-zinc-600 active:scale-95"
+                  title="Download Image"
+                >
+                  <Download size={16} />
+                </button>
+                {images.length > 1 && (
+                  <span className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/40 text-white text-[9px] font-bold rounded-full backdrop-blur-sm">
+                    {idx + 1}/{images.length}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
           <div className="p-4 bg-zinc-100/50 rounded-xl border border-zinc-100/50">
             <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-1">PROMPT USED:</p>
             <p className="text-xs text-zinc-600 italic leading-relaxed">{finalOutput || "No prompt metadata available."}</p>
+          </div>
+          {/* Regenerate section */}
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">Generate more:</span>
+            {[1, 2, 4].map(n => (
+              <button
+                key={n}
+                onClick={() => handleRegenerate(n)}
+                disabled={isRegenerating}
+                className="flex items-center gap-1 px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isRegenerating ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+                {n === 1 ? '1 image' : `${n} images`}
+              </button>
+            ))}
           </div>
         </div>
       );

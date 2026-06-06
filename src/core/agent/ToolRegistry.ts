@@ -113,17 +113,46 @@ export class ToolRegistry {
             description: 'Final delivery of the full project results.',
             parameters: {
               type: 'object',
-              properties: { 
-                output: { 
-                  type: 'string', 
-                  description: 'Full project document in Markdown. NO attribution needed.' 
-                } 
+              properties: {
+                output: {
+                  type: 'string',
+                  description: 'Full project document in Markdown. NO attribution needed.'
+                },
+                imageCount: {
+                  type: 'integer',
+                  description: 'For image output teams: number of images to generate (1-8). Default 1. Use when user asks for multiple images/variations.'
+                }
               },
               required: ['output']
             }
           }
         });
       }
+    }
+
+    // 3. Done Phase: Lead can regenerate assets (useful for requesting more images/variations)
+    if (phase === 'done' && isLead) {
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'deliver_project',
+          description: 'Regenerate or create additional output (e.g. more images). Use when user asks for more variations, different styles, or a new version.',
+          parameters: {
+            type: 'object',
+            properties: {
+              output: {
+                type: 'string',
+                description: 'Updated or refined prompt/document for regeneration.'
+              },
+              imageCount: {
+                type: 'integer',
+                description: 'Number of images to generate (1-8).'
+              }
+            },
+            required: ['output']
+          }
+        }
+      });
     }
 
     return tools;

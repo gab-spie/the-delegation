@@ -221,8 +221,9 @@ export class AgentBrain {
       return;
     }
 
-    // Standard auto-approve flow
-    await this.processFinalAsset(prompt, { model: activeTeam.outputModel });
+    // Standard auto-approve flow — merge any imageCount set by deliverProject tool
+    const storedParams = useCoreStore.getState().pendingOutputParams || {};
+    await this.processFinalAsset(prompt, { model: activeTeam.outputModel, ...storedParams });
   }
 
   public async processFinalAsset(prompt: string, options: any) {
@@ -252,11 +253,26 @@ export class AgentBrain {
       let usage: any = undefined;
 
       if (activeTeam.outputType === 'image') {
-        const result = await provider.generateImage(prompt, model, (msg: string) => {
-          console.log(`[System:Image] ${msg}`);
-        }, options, core.referenceImages);
-        assetContent = result.data || '';
-        usage = result.usage;
+        const imageCount = Math.max(1, Math.min(8, options.imageCount || 1));
+        if (imageCount > 1) {
+          // Generate multiple images in parallel
+          const results = await Promise.all(
+            Array.from({ length: imageCount }, (_, i) =>
+              provider.generateImage(prompt, model, (msg: string) => {
+                console.log(`[System:Image ${i + 1}/${imageCount}] ${msg}`);
+              }, options, core.referenceImages)
+            )
+          );
+          const images = results.map((r: any) => r.data || '').filter(Boolean);
+          assetContent = JSON.stringify(images); // store as JSON array
+          usage = results[0]?.usage;
+        } else {
+          const result = await provider.generateImage(prompt, model, (msg: string) => {
+            console.log(`[System:Image] ${msg}`);
+          }, options, core.referenceImages);
+          assetContent = result.data || '';
+          usage = result.usage;
+        }
       } else if (activeTeam.outputType === 'music') {
         const result = await provider.generateAudio(prompt, model, (msg: string) => {
           console.log(`[System:Audio] ${msg}`);
@@ -312,7 +328,8 @@ export class AgentBrain {
 
   private refreshFromStore() {
     const history = useCoreStore.getState().agentHistories[this.host.data.index];
-    if (history) this.history = [...history];
+    // Always sync: if store is empty (e.g. after resetProject), clear in-memory history too
+    this.history = history ? [...history] : [];
   }
 
   private syncToStore() {

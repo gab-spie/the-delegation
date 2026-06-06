@@ -3,15 +3,15 @@ import { useCoreStore } from '../../../integration/store/coreStore';
 import { useTeamStore } from '../../../integration/store/teamStore';
 import { AGENTIC_SETS } from '../../../data/agents';
 
-export function deliverProject(agent: AgentActionContext, args: { output: string }): boolean {
+export function deliverProject(agent: AgentActionContext, args: { output: string; imageCount?: number }): boolean {
   const store = useCoreStore.getState();
-  const { output } = args;
+  const { output, imageCount } = args;
 
-  // VALIDATION: Only Lead Agent (index 1) can deliver
-  if (store.phase !== 'working') return false;
+  // VALIDATION: Only Lead Agent (index 1) can deliver (also allowed when 'done' for regeneration)
+  if (store.phase !== 'working' && store.phase !== 'done') return false;
   
-  // SAFETY: Prevent project delivery if subagents are still working or waiting for approval
-  const pendingTasks = store.tasks.filter(t => t.status === 'in_progress' || t.status === 'on_hold');
+  // SAFETY: Prevent project delivery if subagents are still working (skip in 'done' phase — it's a regeneration)
+  const pendingTasks = store.phase === 'done' ? [] : store.tasks.filter(t => t.status === 'in_progress' || t.status === 'on_hold');
   if (pendingTasks.length > 0) {
     const names = pendingTasks.map(t => t.title).join(', ');
     agent.appendHistory({
@@ -29,6 +29,10 @@ export function deliverProject(agent: AgentActionContext, args: { output: string
 
   if (isMultimodal) {
     store.setIsGeneratingAsset(true);
+    // Pass imageCount into pendingOutputParams so AgentBrain can use it
+    if (imageCount && imageCount > 1) {
+      store.setPendingOutputParams({ ...store.pendingOutputParams, imageCount });
+    }
     // We don't set phase to 'done' yet, AgentHost will handle generation then set phase to done.
   } else {
     store.setFinalOutput(output);
