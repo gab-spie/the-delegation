@@ -201,19 +201,23 @@ export class AgentBrain {
 
     if (!activeTeam) return;
 
+    // Merge any params already set by deliverProject (e.g. imageCount)
+    const existingParams = useCoreStore.getState().pendingOutputParams || {};
+
     // Check if we need manual approval
     if (activeTeam.outputAutoApprove === false) {
       core.setPendingOutputPrompt(prompt);
 
-      // Prepare default params based on output type
-      const defaultParams: any = { model: activeTeam.outputModel };
+      // Prepare default params based on output type, preserving existing ones
+      const defaultParams: any = { model: activeTeam.outputModel, ...existingParams };
       if (activeTeam.outputType === 'image') {
-        defaultParams.aspectRatio = '16:9';
-        defaultParams.imageSize = '1K';
+        defaultParams.aspectRatio = defaultParams.aspectRatio || '16:9';
+        defaultParams.imageSize = defaultParams.imageSize || '1K';
+        defaultParams.imageCount = defaultParams.imageCount || 1;
       } else if (activeTeam.outputType === 'video') {
-        defaultParams.resolution = '720p';
-        defaultParams.aspectRatio = '16:9';
-        defaultParams.durationSeconds = 4;
+        defaultParams.resolution = defaultParams.resolution || '720p';
+        defaultParams.aspectRatio = defaultParams.aspectRatio || '16:9';
+        defaultParams.durationSeconds = defaultParams.durationSeconds || 4;
       }
 
       core.setPendingOutputParams(defaultParams);
@@ -221,9 +225,8 @@ export class AgentBrain {
       return;
     }
 
-    // Standard auto-approve flow — merge any imageCount set by deliverProject tool
-    const storedParams = useCoreStore.getState().pendingOutputParams || {};
-    await this.processFinalAsset(prompt, { model: activeTeam.outputModel, ...storedParams });
+    // Standard auto-approve flow
+    await this.processFinalAsset(prompt, { model: activeTeam.outputModel, ...existingParams });
   }
 
   public async processFinalAsset(prompt: string, options: any) {

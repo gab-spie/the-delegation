@@ -70,39 +70,62 @@ export function OutputReviewModal() {
   }
 
   const renderImageControls = () => (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
-          <Maximize size={12} /> Aspect Ratio
-          <InfoBubble text="The horizontal or vertical proportions of the generated asset." />
-        </label>
-        <select
-          value={params.aspectRatio || '16:9'}
-          onChange={(e) => updateParam('aspectRatio', e.target.value)}
-          className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-darkDelegation outline-none"
-        >
-          <option value="1:1">1:1 Square</option>
-          <option value="16:9">16:9 Cinematic</option>
-          <option value="9:16">9:16 Vertical</option>
-          <option value="4:3">4:3 Classic</option>
-          <option value="3:2">3:2 Professional</option>
-        </select>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+            <Maximize size={12} /> Aspect Ratio
+            <InfoBubble text="The horizontal or vertical proportions of the generated asset." />
+          </label>
+          <select
+            value={params.aspectRatio || '16:9'}
+            onChange={(e) => updateParam('aspectRatio', e.target.value)}
+            className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-darkDelegation outline-none"
+          >
+            <option value="1:1">1:1 Square</option>
+            <option value="16:9">16:9 Cinematic</option>
+            <option value="9:16">9:16 Vertical</option>
+            <option value="4:3">4:3 Classic</option>
+            <option value="3:2">3:2 Professional</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+            <Settings2 size={12} /> Image Size
+            <InfoBubble text="Target dimensions for the final image. Higher sizes offer more detail but may take longer." />
+          </label>
+          <select
+            value={params.imageSize || '1K'}
+            onChange={(e) => updateParam('imageSize', e.target.value)}
+            className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-darkDelegation outline-none"
+          >
+            <option value="512">512px (Fast)</option>
+            <option value="1K">1K (Standard)</option>
+            <option value="2K">2K (High Res)</option>
+            <option value="4K">4K (Ultra)</option>
+          </select>
+        </div>
       </div>
       <div className="space-y-2">
         <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
-          <Settings2 size={12} /> Image Size
-          <InfoBubble text="Target dimensions for the final image. Higher sizes offer more detail but may take longer." />
+          <ImageIcon size={12} /> Number of Images
+          <InfoBubble text="Generate multiple separate images in parallel. Each image is a unique variation from the same prompt — NOT a collage." />
         </label>
-        <select
-          value={params.imageSize || '1K'}
-          onChange={(e) => updateParam('imageSize', e.target.value)}
-          className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-darkDelegation outline-none"
-        >
-          <option value="512">512px (Fast)</option>
-          <option value="1K">1K (Standard)</option>
-          <option value="2K">2K (High Res)</option>
-          <option value="4K">4K (Ultra)</option>
-        </select>
+        <div className="flex gap-2">
+          {[1, 2, 4, 6, 8].map(n => (
+            <button
+              key={n}
+              onClick={() => updateParam('imageCount', n)}
+              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all active:scale-95 ${
+                (params.imageCount || 1) === n
+                  ? 'bg-darkDelegation text-white shadow-lg'
+                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
