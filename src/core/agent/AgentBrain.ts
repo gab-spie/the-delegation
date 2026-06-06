@@ -68,12 +68,14 @@ export class AgentBrain {
       }
 
       // 2. Prepare context — keep first message (brief/context) + last 9 for continuity
+      //    Filter out greeting messages so LLM never sees cosmetic UI text
+      const relevantHistory = this.history.filter(m => !m.metadata?.greeting);
       const MAX_HISTORY = 10;
       let messages: LLMMessage[];
-      if (this.history.length > MAX_HISTORY) {
-        messages = [this.history[0], ...this.history.slice(-(MAX_HISTORY - 1))];
+      if (relevantHistory.length > MAX_HISTORY) {
+        messages = [relevantHistory[0], ...relevantHistory.slice(-(MAX_HISTORY - 1))];
       } else {
-        messages = [...this.history];
+        messages = [...relevantHistory];
       }
 
       // In chat mode, ensure the latest user message also carries images if it's the brief phase

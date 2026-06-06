@@ -310,9 +310,18 @@ export class SceneManager {
     const set = getActiveAgentSet();
     const agent = getAllAgents(set).find(a => a.index === idx);
     if (!agent) return;
-    useUiStore.setState({ isThinking: true });
-    const msg: ChatMessage = { role: 'assistant', text: `Hello. I am ${agent.name}. How can I assist you?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-    useUiStore.setState({ chatMessages: [msg], isThinking: false });
+
+    // FIX #10: Write greeting into coreStore.agentHistories (source of truth for ChatPanel)
+    // Tagged with metadata.greeting so AgentBrain filters it before sending to LLM
+    const history = useCoreStore.getState().agentHistories[idx] || [];
+    // Only add greeting if history is empty (don't repeat on re-click)
+    if (history.length === 0) {
+      useCoreStore.getState().setAgentHistory(idx, [{
+        role: 'assistant',
+        content: `Hello. I am ${agent.name}. How can I assist you?`,
+        metadata: { greeting: true }
+      }]);
+    }
   }
 
   private onResize() { 
