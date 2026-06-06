@@ -39,10 +39,20 @@ export const DEFAULT_PRICING: ModelPricing = CLAUDE_PRICING['claude-sonnet-4-6']
 
 const ALL_PRICING: Record<string, ModelPricing> = { ...CLAUDE_PRICING, ...GEMINI_PRICING };
 
-export function calculateCost(promptTokens: number, completionTokens: number, modelName: string, durationOrCount?: number): number {
+function findPricing(modelName: string): ModelPricing {
   const lowerName = modelName.toLowerCase();
-  const pricingKey = Object.keys(ALL_PRICING).find(key => lowerName.includes(key));
-  const pricing = pricingKey ? ALL_PRICING[pricingKey] : DEFAULT_PRICING;
+  // Exact match first
+  if (ALL_PRICING[lowerName]) return ALL_PRICING[lowerName];
+  if (ALL_PRICING[modelName]) return ALL_PRICING[modelName];
+  // Longest substring match to avoid false positives
+  const matchedKeys = Object.keys(ALL_PRICING)
+    .filter(key => lowerName.includes(key))
+    .sort((a, b) => b.length - a.length);
+  return matchedKeys.length > 0 ? ALL_PRICING[matchedKeys[0]] : DEFAULT_PRICING;
+}
+
+export function calculateCost(promptTokens: number, completionTokens: number, modelName: string, durationOrCount?: number): number {
+  const pricing = findPricing(modelName);
 
   // 1. Per Image
   if (pricing.perImage !== undefined) {
@@ -67,9 +77,6 @@ export function calculateCost(promptTokens: number, completionTokens: number, mo
 }
 
 export function calculateTokensForCost(modelName: string, durationOrCount?: number): number {
-  const lowerName = modelName.toLowerCase();
-  const pricingKey = Object.keys(ALL_PRICING).find(key => lowerName.includes(key));
-  const pricing = pricingKey ? ALL_PRICING[pricingKey] : DEFAULT_PRICING;
 
   const cost = calculateCost(0, 0, modelName, durationOrCount);
   const baseOutputPrice = DEFAULT_PRICING.outputPer1M || 3.0;

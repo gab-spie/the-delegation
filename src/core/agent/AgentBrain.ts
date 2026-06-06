@@ -87,7 +87,8 @@ export class AgentBrain {
       }
       const allAgents = this.host.simulation.getAllAgents();
       const systemPrompt = PromptBuilder.buildSystemPrompt(this.host.data, core.phase, core.userBrief, allAgents);
-      const toolDefs = options.tools || ToolRegistry.getDefinitions(this.host.data.index, core.phase, this.host.data.subagents?.length || 0);
+      const leadIndex = activeTeam?.leadAgent?.index ?? 1;
+      const toolDefs = options.tools || ToolRegistry.getDefinitions(this.host.data.index, core.phase, this.host.data.subagents?.length || 0, leadIndex);
 
       // 3. Log and Execute LLM Call
       core.addRequestLog({
@@ -132,7 +133,7 @@ export class AgentBrain {
       const isInternalTrigger = options.silent;
       const hasToolCallsOnly = !text && toolCalls.length > 0;
       const isBrief = toolCalls.some(tc => tc.name === 'set_user_brief');
-      const isResolution = false;
+      const isDelivery = toolCalls.some(tc => tc.name === 'deliver_project');
       let finalContent = text;
       const isMalformed = response.finishReason === 'MALFORMED_FUNCTION_CALL';
 
@@ -148,7 +149,7 @@ export class AgentBrain {
       }
 
       // UI/UX handling for chat auto-closing
-      if (options.isChat && (isBrief || isResolution)) {
+      if (options.isChat && (isBrief || isDelivery)) {
         setTimeout(() => {
           if (useUiStore.getState().isChatting) useUiStore.getState().setChatting(false);
           useUiStore.getState().setSelectedNpc(null);

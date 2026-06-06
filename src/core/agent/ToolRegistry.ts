@@ -41,8 +41,8 @@ export class ToolRegistry {
     }
   }
 
-  public static getDefinitions(agentIndex: number, phase: string, subagentsCount: number = 0): any[] {
-    const isLead = agentIndex === 1;
+  public static getDefinitions(agentIndex: number, phase: string, subagentsCount: number = 0, leadAgentIndex: number = 1): any[] {
+    const isLead = agentIndex === leadAgentIndex;
     const isManager = subagentsCount > 0;
     const tools: any[] = [];
 
